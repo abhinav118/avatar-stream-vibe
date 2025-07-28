@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Mic, MicOff, Video, VideoOff, Send, Play, Square } from "lucide-react";
+import { AudioRecorder } from "@/utils/audio-recorder";
 
 // Import HeyGen Streaming Avatar SDK
 let StreamingAvatar: any;
@@ -28,12 +29,69 @@ const InteractiveAvatar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState("");
+  const [audioRecorder, setAudioRecorder] = useState<AudioRecorder | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadSDK();
+    initializeAudioRecorder();
   }, []);
+
+  const initializeAudioRecorder = () => {
+    const recorder = new AudioRecorder(
+      (status) => setRecordingStatus(status),
+      (text) => speakTranscribedText(text)
+    );
+    setAudioRecorder(recorder);
+  };
+
+  const speakTranscribedText = async (text: string) => {
+    if (avatar && text) {
+      setIsSpeaking(true);
+      try {
+        await avatar.speak({ text });
+        toast({
+          title: "Voice Message Sent",
+          description: `Avatar is speaking: "${text}"`,
+        });
+      } catch (error) {
+        console.error("Failed to speak transcribed text:", error);
+        toast({
+          title: "Speech Error",
+          description: "Failed to send voice message to avatar.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSpeaking(false);
+      }
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (!audioRecorder) return;
+
+    // Check for OpenAI API key
+    const openaiKey = localStorage.getItem('openai_api_key');
+    if (!openaiKey) {
+      toast({
+        title: "OpenAI API Key Required",
+        description: "Please add your OpenAI API key in the settings below.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isRecording) {
+      setIsRecording(true);
+      await audioRecorder.startRecording();
+    } else {
+      setIsRecording(false);
+      audioRecorder.stopRecording();
+    }
+  };
 
   // Mock fetch access token function - replace with your actual implementation
   const fetchAccessToken = async (): Promise<string> => {
@@ -259,6 +317,27 @@ const InteractiveAvatar = () => {
               {/* Communication Controls */}
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-muted-foreground">Communication</h3>
+                
+                {/* Voice Recording */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={isRecording ? "destructive" : "avatar"}
+                    onClick={toggleRecording}
+                    disabled={!isConnected}
+                    className="flex-1"
+                  >
+                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    {isRecording ? "Stop Recording" : "Start Recording"}
+                  </Button>
+                </div>
+                
+                {recordingStatus && (
+                  <div className="p-2 bg-muted/20 rounded border border-border/50">
+                    <p className="text-xs text-muted-foreground">{recordingStatus}</p>
+                  </div>
+                )}
+                
+                {/* Text Input */}
                 <div className="flex gap-2">
                   <Input
                     placeholder="Type something to say to the avatar..."
@@ -277,7 +356,7 @@ const InteractiveAvatar = () => {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Press Enter to send your message or click the send button
+                  Press Enter to send your message or use voice recording
                 </p>
               </div>
 
@@ -296,14 +375,37 @@ const InteractiveAvatar = () => {
                 </div>
               </div>
 
+              {/* API Key Setup */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-muted-foreground">OpenAI API Key Setup</h3>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder="Enter your OpenAI API key..."
+                    value={localStorage.getItem('openai_api_key') || ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        localStorage.setItem('openai_api_key', e.target.value);
+                      } else {
+                        localStorage.removeItem('openai_api_key');
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Required for speech-to-text functionality. Your key is stored locally.
+                </p>
+              </div>
+
               {/* Instructions */}
               <div className="p-4 bg-muted/20 rounded-lg border border-border/50">
                 <h4 className="font-medium mb-2">How to get started:</h4>
                 <ol className="text-sm text-muted-foreground space-y-1">
-                  <li>1. Get your HeyGen API key from the HeyGen dashboard</li>
-                  <li>2. Replace the API key in the code</li>
-                  <li>3. Click "Start Session" to connect to your avatar</li>
-                  <li>4. Type a message and press Enter to make the avatar speak</li>
+                  <li>1. Add your OpenAI API key above for voice recording</li>
+                  <li>2. Click "Start Session" to connect to your avatar</li>
+                  <li>3. Use voice recording or type messages to interact</li>
+                  <li>4. Press Enter to send text or use the record button for voice</li>
                 </ol>
               </div>
             </CardContent>
