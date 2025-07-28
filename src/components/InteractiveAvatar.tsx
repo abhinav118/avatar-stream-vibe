@@ -32,6 +32,12 @@ const InteractiveAvatar = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [audioRecorder, setAudioRecorder] = useState<AudioRecorder | null>(null);
+  
+  // Voice chat state
+  const [currentMode, setCurrentMode] = useState<"text" | "voice">("text");
+  const [isVoiceChatActive, setIsVoiceChatActive] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
@@ -196,12 +202,30 @@ const InteractiveAvatar = () => {
       const token = await fetchAccessToken();
       const avatarInstance = new StreamingAvatar({ token });
 
+      // Stream events
       avatarInstance.on(StreamingEvents.STREAM_READY, handleStreamReady);
       avatarInstance.on(StreamingEvents.STREAM_DISCONNECTED, handleStreamDisconnected);
+      
+      // Voice chat events
+      avatarInstance.on(StreamingEvents.USER_START, () => {
+        setVoiceStatus("Listening...");
+      });
+      avatarInstance.on(StreamingEvents.USER_STOP, () => {
+        setVoiceStatus("Processing...");
+      });
+      avatarInstance.on(StreamingEvents.AVATAR_START_TALKING, () => {
+        setVoiceStatus("Avatar is speaking...");
+        setIsSpeaking(true);
+      });
+      avatarInstance.on(StreamingEvents.AVATAR_STOP_TALKING, () => {
+        setVoiceStatus("Waiting for you to speak...");
+        setIsSpeaking(false);
+      });
 
       const sessionData = await avatarInstance.createStartAvatar({
         quality: AvatarQuality.High,
-        avatarName: "SilasHR_public", // Default avatar name
+        avatarName: "Wayne_20240711", // Default avatar name
+        language: "en",
       });
 
       setAvatar(avatarInstance);
@@ -221,6 +245,10 @@ const InteractiveAvatar = () => {
 
     setIsLoading(true);
     try {
+      if (isVoiceChatActive) {
+        await avatar.closeVoiceChat();
+        setIsVoiceChatActive(false);
+      }
       await avatar.stopAvatar();
       if (videoRef.current) {
         videoRef.current.srcObject = null;
@@ -229,6 +257,8 @@ const InteractiveAvatar = () => {
       setSessionData(null);
       setIsConnected(false);
       setIsSpeaking(false);
+      setCurrentMode("text");
+      setVoiceStatus("");
     } catch (error) {
       console.error("Failed to end session:", error);
     } finally {
@@ -265,6 +295,61 @@ const InteractiveAvatar = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSpeak();
+    }
+  };
+
+  // Voice chat functions
+  const startVoiceChat = async () => {
+    if (!avatar) return;
+    
+    try {
+      await avatar.startVoiceChat({
+        useSilencePrompt: false
+      });
+      setIsVoiceChatActive(true);
+      setVoiceStatus("Waiting for you to speak...");
+      toast({
+        title: "Voice Chat Started",
+        description: "You can now speak directly to the avatar!",
+      });
+    } catch (error) {
+      console.error("Error starting voice chat:", error);
+      setVoiceStatus("Error starting voice chat");
+      toast({
+        title: "Voice Chat Error",
+        description: "Failed to start voice chat mode.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const closeVoiceChat = async () => {
+    if (!avatar) return;
+    
+    try {
+      await avatar.closeVoiceChat();
+      setIsVoiceChatActive(false);
+      setVoiceStatus("");
+      toast({
+        title: "Voice Chat Ended",
+        description: "Voice chat mode has been disabled.",
+      });
+    } catch (error) {
+      console.error("Error closing voice chat:", error);
+    }
+  };
+
+  const switchMode = async (mode: "text" | "voice") => {
+    if (currentMode === mode || !isConnected) return;
+    
+    setCurrentMode(mode);
+    
+    if (mode === "text") {
+      if (isVoiceChatActive) {
+        await closeVoiceChat();
+      }
+    } else {
+      await startVoiceChat();
     }
   };
 
@@ -359,46 +444,89 @@ const InteractiveAvatar = () => {
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-muted-foreground">Communication</h3>
                 
-                {/* Voice Recording */}
-                <div className="flex gap-2">
+                {/* Mode Toggle */}
+                <div className="flex gap-2" role="group">
                   <Button
-                    variant={isRecording ? "destructive" : "avatar"}
-                    onClick={toggleRecording}
+                    variant={currentMode === "text" ? "default" : "outline"}
+                    onClick={() => switchMode("text")}
                     disabled={!isConnected}
                     className="flex-1"
                   >
-                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    {isRecording ? "Stop Recording" : "Start Recording"}
+                    Text Mode
+                  </Button>
+                  <Button
+                    variant={currentMode === "voice" ? "default" : "outline"}
+                    onClick={() => switchMode("voice")}
+                    disabled={!isConnected}
+                    className="flex-1"
+                  >
+                    Voice Mode
                   </Button>
                 </div>
-                
-                {recordingStatus && (
-                  <div className="p-2 bg-muted/20 rounded border border-border/50">
-                    <p className="text-xs text-muted-foreground">{recordingStatus}</p>
+
+                {/* Text Mode Controls */}
+                {currentMode === "text" && (
+                  <>
+                    {/* Voice Recording (OpenAI STT) */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant={isRecording ? "destructive" : "avatar"}
+                        onClick={toggleRecording}
+                        disabled={!isConnected}
+                        className="flex-1"
+                      >
+                        {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                        {isRecording ? "Stop Recording" : "Start Recording"}
+                      </Button>
+                    </div>
+                    
+                    {recordingStatus && (
+                      <div className="p-2 bg-muted/20 rounded border border-border/50">
+                        <p className="text-xs text-muted-foreground">{recordingStatus}</p>
+                      </div>
+                    )}
+                    
+                    {/* Text Input */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Type something to say to the avatar..."
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        disabled={!isConnected || isSpeaking}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="cyber"
+                        onClick={handleSpeak}
+                        disabled={!isConnected || !userInput.trim() || isSpeaking}
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Press Enter to send your message or use voice recording
+                    </p>
+                  </>
+                )}
+
+                {/* Voice Mode Controls */}
+                {currentMode === "voice" && (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-2 h-2 rounded-full ${isVoiceChatActive ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+                        <span className="text-sm font-medium">Voice Chat Active</span>
+                      </div>
+                      {voiceStatus && (
+                        <p className="text-sm text-muted-foreground">{voiceStatus}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Simply speak to interact with the avatar. No buttons needed!
+                      </p>
+                    </div>
                   </div>
                 )}
-                
-                {/* Text Input */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Type something to say to the avatar..."
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    disabled={!isConnected || isSpeaking}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="cyber"
-                    onClick={handleSpeak}
-                    disabled={!isConnected || !userInput.trim() || isSpeaking}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Press Enter to send your message or use voice recording
-                </p>
               </div>
 
               {/* Status Information */}
@@ -416,55 +544,57 @@ const InteractiveAvatar = () => {
                 </div>
               </div>
 
-              {/* API Key Setup */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">OpenAI API Key Setup</h3>
-                <div className="flex gap-2">
-                  <Input
-                    type="password"
-                    placeholder="Enter your OpenAI API key (sk-proj-...)..."
-                    defaultValue=""
-                    onChange={(e) => {
-                      const value = e.target.value.trim();
-                      if (value) {
-                        localStorage.setItem('openai_api_key', value);
-                      } else {
-                        localStorage.removeItem('openai_api_key');
-                      }
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const input = document.querySelector('input[type="password"]') as HTMLInputElement;
-                      if (input) {
-                        input.value = '';
-                        localStorage.removeItem('openai_api_key');
-                        toast({
-                          title: "API Key Cleared",
-                          description: "OpenAI API key has been removed.",
-                        });
-                      }
-                    }}
-                  >
-                    Clear
-                  </Button>
+              {/* API Key Setup - Only show for text mode */}
+              {currentMode === "text" && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">OpenAI API Key Setup</h3>
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder="Enter your OpenAI API key (sk-proj-...)..."
+                      defaultValue=""
+                      onChange={(e) => {
+                        const value = e.target.value.trim();
+                        if (value) {
+                          localStorage.setItem('openai_api_key', value);
+                        } else {
+                          localStorage.removeItem('openai_api_key');
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.querySelector('input[type="password"]') as HTMLInputElement;
+                        if (input) {
+                          input.value = '';
+                          localStorage.removeItem('openai_api_key');
+                          toast({
+                            title: "API Key Cleared",
+                            description: "OpenAI API key has been removed.",
+                          });
+                        }
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Required for speech-to-text functionality in Text Mode. Your key is stored locally.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Required for speech-to-text functionality. Your key is stored locally.
-                </p>
-              </div>
+              )}
 
               {/* Instructions */}
               <div className="p-4 bg-muted/20 rounded-lg border border-border/50">
                 <h4 className="font-medium mb-2">How to get started:</h4>
                 <ol className="text-sm text-muted-foreground space-y-1">
-                  <li>1. Add your OpenAI API key above for voice recording</li>
-                  <li>2. Click "Start Session" to connect to your avatar</li>
-                  <li>3. Use voice recording or type messages to interact</li>
-                  <li>4. Press Enter to send text or use the record button for voice</li>
+                  <li>1. Click "Start Session" to connect to your avatar</li>
+                  <li>2. Choose between Text Mode or Voice Mode</li>
+                  <li>3. <strong>Voice Mode:</strong> Simply speak - no setup required!</li>
+                  <li>4. <strong>Text Mode:</strong> Add OpenAI key for voice recording or type messages</li>
                 </ol>
               </div>
             </CardContent>
