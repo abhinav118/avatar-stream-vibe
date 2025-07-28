@@ -41,11 +41,19 @@ const InteractiveAvatar = () => {
   }, []);
 
   const initializeAudioRecorder = () => {
+    console.log('Initializing audio recorder...');
     const recorder = new AudioRecorder(
-      (status) => setRecordingStatus(status),
-      (text) => speakTranscribedText(text)
+      (status) => {
+        console.log('Recording status update:', status);
+        setRecordingStatus(status);
+      },
+      (text) => {
+        console.log('AudioRecorder callback triggered with text:', text);
+        speakTranscribedText(text);
+      }
     );
     setAudioRecorder(recorder);
+    console.log('Audio recorder initialized');
   };
 
   const speakTranscribedText = async (text: string) => {
