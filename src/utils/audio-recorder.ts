@@ -84,13 +84,20 @@ export class AudioRecorder {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('OpenAI API Error:', response.status, errorText);
         throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
       }
 
       const data = await response.json();
       console.log('Received transcription:', data.text);
-      this.onStatusChange('');
-      this.onTranscriptionComplete(data.text);
+      
+      if (!data.text || data.text.trim().length === 0) {
+        throw new Error('No speech detected in the recording');
+      }
+      
+      this.onStatusChange('Transcription complete!');
+      console.log('Calling onTranscriptionComplete with:', data.text);
+      this.onTranscriptionComplete(data.text.trim());
     } catch (error) {
       console.error('Error transcribing audio:', error);
       this.onStatusChange('Error: Failed to transcribe audio');

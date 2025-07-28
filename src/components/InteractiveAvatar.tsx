@@ -49,24 +49,57 @@ const InteractiveAvatar = () => {
   };
 
   const speakTranscribedText = async (text: string) => {
-    if (avatar && text) {
-      setIsSpeaking(true);
-      try {
-        await avatar.speak({ text });
-        toast({
-          title: "Voice Message Sent",
-          description: `Avatar is speaking: "${text}"`,
-        });
-      } catch (error) {
-        console.error("Failed to speak transcribed text:", error);
-        toast({
-          title: "Speech Error",
-          description: "Failed to send voice message to avatar.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSpeaking(false);
-      }
+    console.log('speakTranscribedText called with:', text);
+    console.log('Avatar instance:', avatar);
+    console.log('Is connected:', isConnected);
+    
+    if (!avatar) {
+      console.error('No avatar instance available');
+      toast({
+        title: "Avatar Error",
+        description: "Avatar not connected. Please start a session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isConnected) {
+      console.error('Avatar not connected');
+      toast({
+        title: "Avatar Error", 
+        description: "Avatar session not active. Please start a session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!text || text.trim().length === 0) {
+      console.error('No text to speak');
+      toast({
+        title: "No Speech Detected",
+        description: "No speech was detected in your recording.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSpeaking(true);
+    try {
+      console.log('Calling avatar.speak with text:', text);
+      await avatar.speak({ text: text.trim() });
+      toast({
+        title: "Voice Message Sent",
+        description: `Avatar is speaking: "${text}"`,
+      });
+    } catch (error) {
+      console.error("Failed to speak transcribed text:", error);
+      toast({
+        title: "Speech Error",
+        description: "Failed to send voice message to avatar.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSpeaking(false);
     }
   };
 
