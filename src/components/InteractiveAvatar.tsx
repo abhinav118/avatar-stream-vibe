@@ -38,21 +38,21 @@ const InteractiveAvatar = () => {
   // Mock fetch access token function - replace with your actual implementation
   const fetchAccessToken = async (): Promise<string> => {
     // For demo purposes, we'll show an error message
-    toast({
-      title: "API Key Required",
-      description: "Please add your HeyGen API key to use the interactive avatar.",
-      variant: "destructive",
-    });
-    throw new Error("API key not configured");
+    // toast({
+    //   title: "API Key Required",
+    //   description: "Please add your HeyGen API key to use the interactive avatar.",
+    //   variant: "destructive",
+    // });
+    // throw new Error("API key not configured");
     
     // Uncomment and replace with your actual API key
-    // const apiKey = "YOUR_HEYGEN_API_KEY";
-    // const response = await fetch("https://api.heygen.com/v1/streaming.create_token", {
-    //   method: "POST",
-    //   headers: { "x-api-key": apiKey },
-    // });
-    // const { data } = await response.json();
-    // return data.token;
+    const apiKey = "MGVmNWZhZWY0YjJjNDRlMjljZTU0ZDJmYWI2YWNhNGUtMTc1MzcyNDk2NQ==";
+    const response = await fetch("https://api.heygen.com/v1/streaming.create_token", {
+      method: "POST",
+      headers: { "x-api-key": apiKey },
+    });
+    const { data } = await response.json();
+    return data.token;
   };
 
   const handleStreamReady = (event: any) => {
