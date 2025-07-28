@@ -61,12 +61,18 @@ export class AudioRecorder {
       formData.append('file', audioBlob, 'audio.webm');
       formData.append('model', 'whisper-1');
 
-      // Note: In production, this should be done through a backend endpoint
-      // to keep the API key secure
-      const openaiKey = localStorage.getItem('openai_api_key');
+      // Get and validate the OpenAI API key
+      const openaiKey = localStorage.getItem('openai_api_key')?.trim();
       if (!openaiKey) {
         throw new Error('OpenAI API key not found. Please add your API key.');
       }
+
+      // Validate API key format
+      if (!openaiKey.startsWith('sk-')) {
+        throw new Error('Invalid OpenAI API key format. Key should start with "sk-"');
+      }
+
+      console.log('Using API key:', openaiKey.substring(0, 10) + '...');
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',

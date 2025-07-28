@@ -381,17 +381,35 @@ const InteractiveAvatar = () => {
                 <div className="flex gap-2">
                   <Input
                     type="password"
-                    placeholder="Enter your OpenAI API key..."
-                    value={localStorage.getItem('openai_api_key') || ''}
+                    placeholder="Enter your OpenAI API key (sk-proj-...)..."
+                    defaultValue=""
                     onChange={(e) => {
-                      if (e.target.value) {
-                        localStorage.setItem('openai_api_key', e.target.value);
+                      const value = e.target.value.trim();
+                      if (value) {
+                        localStorage.setItem('openai_api_key', value);
                       } else {
                         localStorage.removeItem('openai_api_key');
                       }
                     }}
                     className="flex-1"
                   />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const input = document.querySelector('input[type="password"]') as HTMLInputElement;
+                      if (input) {
+                        input.value = '';
+                        localStorage.removeItem('openai_api_key');
+                        toast({
+                          title: "API Key Cleared",
+                          description: "OpenAI API key has been removed.",
+                        });
+                      }
+                    }}
+                  >
+                    Clear
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Required for speech-to-text functionality. Your key is stored locally.
