@@ -234,7 +234,7 @@ const InteractiveAvatar = () => {
 
       const sessionData = await avatarInstance.createStartAvatar({
         quality: AvatarQuality.High,
-        avatarName: "Marianne_ProfessionalLook_public", // Default avatar name
+        avatarName: "Katya_Chair_Sitting_public", // Default avatar name
         language: "en",
       });
 
