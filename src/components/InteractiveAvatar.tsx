@@ -197,6 +197,16 @@ const InteractiveAvatar = () => {
       return;
     }
 
+    // Check for OpenAI API key and show suggestion if missing
+    const openaiKey = localStorage.getItem('openai_api_key');
+    if (!openaiKey) {
+      toast({
+        title: "OpenAI API Key Recommended",
+        description: "Consider setting up your OpenAI API key below for enhanced text mode voice recording features.",
+        variant: "default",
+      });
+    }
+
     setIsLoading(true);
     try {
       const token = await fetchAccessToken();
