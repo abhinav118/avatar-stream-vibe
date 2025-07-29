@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Mic, MicOff, Video, VideoOff, Send, Play, Square } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, Send, Play, Square, Users, UserCheck, Hotel, Calendar, Phone } from "lucide-react";
 import { AudioRecorder } from "@/utils/audio-recorder";
 
 // Import HeyGen Streaming Avatar SDK
@@ -22,6 +23,59 @@ const loadSDK = async () => {
   }
 };
 
+// Agent role configurations
+interface RoleConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  avatarName: string;
+  prompt?: string;
+}
+
+const roleConfigs: RoleConfig[] = [
+  {
+    id: "customer-service",
+    name: "Customer Service",
+    description: "Talk to an AI that helps customers with questions and support",
+    icon: <Users className="w-4 h-4" />,
+    avatarName: "Katya_Chair_Sitting_public",
+    prompt: "You are a helpful customer service representative. Assist users with their questions and provide excellent support."
+  },
+  {
+    id: "receptionist",
+    name: "Receptionist",
+    description: "Professional AI receptionist for greeting visitors and managing appointments",
+    icon: <UserCheck className="w-4 h-4" />,
+    avatarName: "Katya_Chair_Sitting_public",
+    prompt: "You are a professional receptionist. Greet visitors warmly and help them with their needs."
+  },
+  {
+    id: "concierge",
+    name: "Concierge",
+    description: "Luxury hotel concierge AI for personalized guest services",
+    icon: <Hotel className="w-4 h-4" />,
+    avatarName: "Katya_Chair_Sitting_public",
+    prompt: "You are a luxury hotel concierge. Provide personalized recommendations and exceptional service."
+  },
+  {
+    id: "appointment-setter",
+    name: "Appointment Setter",
+    description: "AI assistant specialized in scheduling and managing appointments",
+    icon: <Calendar className="w-4 h-4" />,
+    avatarName: "Katya_Chair_Sitting_public",
+    prompt: "You are an appointment setting specialist. Help users schedule appointments efficiently."
+  },
+  {
+    id: "ai-ivr",
+    name: "AI IVR",
+    description: "Interactive voice response system for call routing and information",
+    icon: <Phone className="w-4 h-4" />,
+    avatarName: "Katya_Chair_Sitting_public",
+    prompt: "You are an AI IVR system. Help callers navigate options and connect them to the right department."
+  }
+];
+
 const InteractiveAvatar = () => {
   const [avatar, setAvatar] = useState<any>(null);
   const [sessionData, setSessionData] = useState<any>(null);
@@ -32,6 +86,7 @@ const InteractiveAvatar = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [audioRecorder, setAudioRecorder] = useState<AudioRecorder | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>("customer-service");
   
   // Voice chat state
   const [currentMode, setCurrentMode] = useState<"text" | "voice">("text");
@@ -41,10 +96,24 @@ const InteractiveAvatar = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
+  // Get current role config
+  const currentRole = roleConfigs.find(role => role.id === selectedRole) || roleConfigs[0];
+
   useEffect(() => {
     loadSDK();
     initializeAudioRecorder();
   }, []);
+
+  // Handle role switching - restart session if connected with new role
+  useEffect(() => {
+    if (isConnected && avatar) {
+      // Show notification about role change
+      toast({
+        title: "Role Changed",
+        description: `Switched to ${currentRole.name}. Restart session to apply changes.`,
+      });
+    }
+  }, [selectedRole]);
 
   const initializeAudioRecorder = () => {
     console.log('Initializing audio recorder...');
@@ -234,7 +303,7 @@ const InteractiveAvatar = () => {
 
       const sessionData = await avatarInstance.createStartAvatar({
         quality: AvatarQuality.High,
-        avatarName: "Katya_Chair_Sitting_public", // Default avatar name
+        avatarName: currentRole.avatarName,
         language: "en",
       });
 
@@ -374,6 +443,36 @@ const InteractiveAvatar = () => {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Experience the future of AI communication with HeyGen's streaming avatar technology
           </p>
+        </div>
+
+        {/* Agent Scenario Tabs */}
+        <div className="mb-8">
+          <Tabs value={selectedRole} onValueChange={setSelectedRole} className="w-full">
+            <TabsList className="inline-flex h-12 items-center justify-start rounded-full bg-muted/40 p-1 text-muted-foreground overflow-x-auto scrollbar-hide w-full max-w-4xl mx-auto">
+              {roleConfigs.map((role) => (
+                <TabsTrigger
+                  key={role.id}
+                  value={role.id}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md gap-2 min-w-max"
+                >
+                  {role.icon}
+                  {role.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            {/* Role Description */}
+            <div className="mt-6 text-center">
+              <div className="max-w-2xl mx-auto">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {currentRole.name}
+                </h3>
+                <p className="text-muted-foreground">
+                  {currentRole.description}
+                </p>
+              </div>
+            </div>
+          </Tabs>
         </div>
 
         {/* Main Content */}
