@@ -26,49 +26,50 @@ const loadSDK = async () => {
 // Agent role configurations
 interface RoleConfig {
   id: string;
-  name: string;
+  label: string;
   description: string;
   icon: React.ReactNode;
   avatarName: string;
+  heygenShareUrl?: string;
   prompt?: string;
 }
 
 const roleConfigs: RoleConfig[] = [
   {
     id: "customer-service",
-    name: "Customer Service",
-    description: "Talk to an AI that helps customers with questions and support",
+    label: "Customer Service",
+    description: "Talk to an AI that helps customers with questions and support issues",
     icon: <Users className="w-4 h-4" />,
     avatarName: "Katya_Chair_Sitting_public",
     prompt: "You are a helpful customer service representative. Assist users with their questions and provide excellent support."
   },
   {
-    id: "receptionist",
-    name: "Receptionist",
-    description: "Professional AI receptionist for greeting visitors and managing appointments",
+    id: "receptionist", 
+    label: "Receptionist",
+    description: "Speak to an AI receptionist that greets visitors and manages appointments",
     icon: <UserCheck className="w-4 h-4" />,
     avatarName: "Katya_Chair_Sitting_public",
     prompt: "You are a professional receptionist. Greet visitors warmly and help them with their needs."
   },
   {
     id: "concierge",
-    name: "Concierge",
-    description: "Luxury hotel concierge AI for personalized guest services",
+    label: "Concierge", 
+    description: "Talk to a luxury hotel concierge AI for personalized guest services",
     icon: <Hotel className="w-4 h-4" />,
     avatarName: "Katya_Chair_Sitting_public",
     prompt: "You are a luxury hotel concierge. Provide personalized recommendations and exceptional service."
   },
   {
     id: "appointment-setter",
-    name: "Appointment Setter",
-    description: "AI assistant specialized in scheduling and managing appointments",
+    label: "Appointment Setter",
+    description: "AI assistant specialized in scheduling and managing appointments efficiently",
     icon: <Calendar className="w-4 h-4" />,
-    avatarName: "Katya_Chair_Sitting_public",
+    avatarName: "Katya_Chair_Sitting_public", 
     prompt: "You are an appointment setting specialist. Help users schedule appointments efficiently."
   },
   {
     id: "ai-ivr",
-    name: "AI IVR",
+    label: "AI IVR",
     description: "Interactive voice response system for call routing and information",
     icon: <Phone className="w-4 h-4" />,
     avatarName: "Katya_Chair_Sitting_public",
@@ -86,7 +87,7 @@ const InteractiveAvatar = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [audioRecorder, setAudioRecorder] = useState<AudioRecorder | null>(null);
-  const [selectedRole, setSelectedRole] = useState<string>("customer-service");
+  const [activeRole, setActiveRole] = useState<string>("customer-service");
   
   // Voice chat state
   const [currentMode, setCurrentMode] = useState<"text" | "voice">("text");
@@ -97,7 +98,7 @@ const InteractiveAvatar = () => {
   const { toast } = useToast();
 
   // Get current role config
-  const currentRole = roleConfigs.find(role => role.id === selectedRole) || roleConfigs[0];
+  const currentRole = roleConfigs.find(role => role.id === activeRole) || roleConfigs[0];
 
   useEffect(() => {
     loadSDK();
@@ -110,10 +111,10 @@ const InteractiveAvatar = () => {
       // Show notification about role change
       toast({
         title: "Role Changed",
-        description: `Switched to ${currentRole.name}. Restart session to apply changes.`,
+        description: `Switched to ${currentRole.label}. Restart session to apply changes.`,
       });
     }
-  }, [selectedRole]);
+  }, [activeRole]);
 
   const initializeAudioRecorder = () => {
     console.log('Initializing audio recorder...');
@@ -446,269 +447,265 @@ const InteractiveAvatar = () => {
         </div>
 
         {/* Agent Scenario Tabs */}
-        <div className="mb-8">
-          <Tabs value={selectedRole} onValueChange={setSelectedRole} className="w-full">
-            <TabsList className="inline-flex h-12 items-center justify-start rounded-full bg-muted/40 p-1 text-muted-foreground overflow-x-auto scrollbar-hide w-full max-w-4xl mx-auto">
-              {roleConfigs.map((role) => (
-                <TabsTrigger
-                  key={role.id}
-                  value={role.id}
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md gap-2 min-w-max"
-                >
-                  {role.icon}
-                  {role.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            
-            {/* Role Description */}
-            <div className="mt-6 text-center">
-              <div className="max-w-2xl mx-auto">
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  {currentRole.name}
-                </h3>
-                <p className="text-muted-foreground">
-                  {currentRole.description}
-                </p>
-              </div>
-            </div>
-          </Tabs>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Video Section */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Video className="w-5 h-5" />
-                Avatar Display
-                <Badge variant={isConnected ? "default" : "secondary"} className="ml-auto">
-                  {isConnected ? "Connected" : "Disconnected"}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video bg-secondary/20 rounded-lg overflow-hidden relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-                {!isConnected && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <VideoOff className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">
-                        Start a session to see your avatar
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {isSpeaking && (
-                  <div className="absolute top-4 right-4">
-                    <Badge variant="neon" className="animate-pulse">
-                      <Mic className="w-3 h-3 mr-1" />
-                      Speaking
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Controls Section */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-            <CardHeader>
-              <CardTitle>Avatar Controls</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Session Controls */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Session Management</h3>
-                <div className="flex gap-3">
-                  <Button
-                    variant="avatar"
-                    onClick={startSession}
-                    disabled={isConnected || isLoading}
-                    className="flex-1"
-                  >
-                    <Play className="w-4 h-4" />
-                    {isLoading ? "Starting..." : "Start Session"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={endSession}
-                    disabled={!isConnected || isLoading}
-                    className="flex-1"
-                  >
-                    <Square className="w-4 h-4" />
-                    End Session
-                  </Button>
-                </div>
-              </div>
-
-              {/* Communication Controls */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Communication</h3>
-                
-                {/* Mode Toggle */}
-                <div className="flex gap-2" role="group">
-                  <Button
-                    variant={currentMode === "text" ? "default" : "outline"}
-                    onClick={() => switchMode("text")}
-                    disabled={!isConnected}
-                    className="flex-1"
-                  >
-                    Text Mode
-                  </Button>
-                  <Button
-                    variant={currentMode === "voice" ? "default" : "outline"}
-                    onClick={() => switchMode("voice")}
-                    disabled={!isConnected}
-                    className="flex-1"
-                  >
-                    Voice Mode
-                  </Button>
-                </div>
-
-                {/* Text Mode Controls */}
-                {currentMode === "text" && (
-                  <>
-                    {/* Voice Recording (OpenAI STT) */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant={isRecording ? "destructive" : "avatar"}
-                        onClick={toggleRecording}
-                        disabled={!isConnected}
-                        className="flex-1"
-                      >
-                        {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                        {isRecording ? "Stop Recording" : "Start Recording"}
-                      </Button>
-                    </div>
-                    
-                    {recordingStatus && (
-                      <div className="p-2 bg-muted/20 rounded border border-border/50">
-                        <p className="text-xs text-muted-foreground">{recordingStatus}</p>
-                      </div>
-                    )}
-                    
-                    {/* Text Input */}
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Type something to say to the avatar..."
-                        value={userInput}
-                        onChange={(e) => setUserInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        disabled={!isConnected || isSpeaking}
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="cyber"
-                        onClick={handleSpeak}
-                        disabled={!isConnected || !userInput.trim() || isSpeaking}
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Press Enter to send your message or use voice recording
-                    </p>
-                  </>
-                )}
-
-                {/* Voice Mode Controls */}
-                {currentMode === "voice" && (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`w-2 h-2 rounded-full ${isVoiceChatActive ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
-                        <span className="text-sm font-medium">Voice Chat Active</span>
-                      </div>
-                      {voiceStatus && (
-                        <p className="text-sm text-muted-foreground">{voiceStatus}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Simply speak to interact with the avatar. No buttons needed!
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Status Information */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-neon-green' : 'bg-muted'}`} />
-                    <span className="text-sm">{isConnected ? 'Connected' : 'Disconnected'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isSpeaking ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    <span className="text-sm">{isSpeaking ? 'Speaking' : 'Ready'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* API Key Setup - Only show for text mode */}
-              {currentMode === "text" && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground">OpenAI API Key Setup</h3>
-                  <div className="flex gap-2">
-                    <Input
-                      type="password"
-                      placeholder="Enter your OpenAI API key (sk-proj-...)..."
-                      defaultValue=""
-                      onChange={(e) => {
-                        const value = e.target.value.trim();
-                        if (value) {
-                          localStorage.setItem('openai_api_key', value);
-                        } else {
-                          localStorage.removeItem('openai_api_key');
-                        }
-                      }}
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const input = document.querySelector('input[type="password"]') as HTMLInputElement;
-                        if (input) {
-                          input.value = '';
-                          localStorage.removeItem('openai_api_key');
-                          toast({
-                            title: "API Key Cleared",
-                            description: "OpenAI API key has been removed.",
-                          });
-                        }
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Required for speech-to-text functionality in Text Mode. Your key is stored locally.
+        <Tabs value={activeRole} onValueChange={setActiveRole} className="w-full">
+          <TabsList className="inline-flex h-12 items-center justify-start rounded-full bg-gray-100 p-1 text-gray-600 overflow-x-auto scrollbar-hide w-full max-w-4xl mx-auto">
+            {roleConfigs.map((role) => (
+              <TabsTrigger
+                key={role.id}
+                value={role.id}
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:border data-[state=active]:border-purple-500 data-[state=active]:shadow-sm data-[state=active]:text-purple-700 data-[state=active]:font-semibold hover:bg-gray-200 gap-2 min-w-max"
+              >
+                {role.icon}
+                {role.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          
+          {/* Tab Content Sections */}
+          {roleConfigs.map((role) => (
+            <TabsContent key={role.id} value={role.id} className="mt-4">
+              <div className="p-4 rounded-lg border border-gray-300 bg-white shadow-sm min-h-[480px]">
+                {/* Role Description */}
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2 flex items-center justify-center gap-2">
+                    {role.icon}
+                    {role.label}
+                  </h3>
+                  <p className="text-gray-600">
+                    {role.description}
                   </p>
                 </div>
-              )}
 
-              {/* Instructions */}
-              <div className="p-4 bg-muted/20 rounded-lg border border-border/50">
-                <h4 className="font-medium mb-2">How to get started:</h4>
-                <ol className="text-sm text-muted-foreground space-y-1">
-                  <li>1. Click "Start Session" to connect to your avatar</li>
-                  <li>2. Choose between Text Mode or Voice Mode</li>
-                  <li>3. <strong>Voice Mode:</strong> Simply speak - no setup required!</li>
-                  <li>4. <strong>Text Mode:</strong> Add OpenAI key for voice recording or type messages</li>
-                </ol>
+                {/* Avatar and Controls Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Video Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Video className="w-5 h-5 text-gray-700" />
+                      <span className="font-medium text-gray-900">Avatar Display</span>
+                      <Badge variant={isConnected ? "default" : "secondary"} className="ml-auto">
+                        {isConnected ? "Connected" : "Disconnected"}
+                      </Badge>
+                    </div>
+                    
+                    <div className="aspect-video bg-gray-50 rounded-lg overflow-hidden relative border border-gray-200">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      {!isConnected && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center">
+                            <VideoOff className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500">
+                              Start a session to see your {role.label.toLowerCase()}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {isSpeaking && (
+                        <div className="absolute top-4 right-4">
+                          <Badge variant="neon" className="animate-pulse">
+                            <Mic className="w-3 h-3 mr-1" />
+                            Speaking
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Controls Section */}
+                  <div className="space-y-6">
+                    {/* Session Controls */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-gray-700">Session Management</h4>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="avatar"
+                          onClick={startSession}
+                          disabled={isConnected || isLoading}
+                          className="flex-1"
+                        >
+                          <Play className="w-4 h-4" />
+                          {isLoading ? "Starting..." : "Start Session"}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={endSession}
+                          disabled={!isConnected || isLoading}
+                          className="flex-1"
+                        >
+                          <Square className="w-4 h-4" />
+                          End Session
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Communication Controls */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-gray-700">Communication</h4>
+                      
+                      {/* Mode Toggle */}
+                      <div className="flex gap-2" role="group">
+                        <Button
+                          variant={currentMode === "text" ? "default" : "outline"}
+                          onClick={() => switchMode("text")}
+                          disabled={!isConnected}
+                          className="flex-1"
+                        >
+                          Text Mode
+                        </Button>
+                        <Button
+                          variant={currentMode === "voice" ? "default" : "outline"}
+                          onClick={() => switchMode("voice")}
+                          disabled={!isConnected}
+                          className="flex-1"
+                        >
+                          Voice Mode
+                        </Button>
+                      </div>
+
+                      {/* Text Mode Controls */}
+                      {currentMode === "text" && (
+                        <>
+                          {/* Voice Recording (OpenAI STT) */}
+                          <div className="flex gap-2">
+                            <Button
+                              variant={isRecording ? "destructive" : "avatar"}
+                              onClick={toggleRecording}
+                              disabled={!isConnected}
+                              className="flex-1"
+                            >
+                              {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                              {isRecording ? "Stop Recording" : "Start Recording"}
+                            </Button>
+                          </div>
+                          
+                          {recordingStatus && (
+                            <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                              <p className="text-xs text-gray-600">{recordingStatus}</p>
+                            </div>
+                          )}
+                          
+                          {/* Text Input */}
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Type something to say to the avatar..."
+                              value={userInput}
+                              onChange={(e) => setUserInput(e.target.value)}
+                              onKeyPress={handleKeyPress}
+                              disabled={!isConnected || isSpeaking}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="cyber"
+                              onClick={handleSpeak}
+                              disabled={!isConnected || !userInput.trim() || isSpeaking}
+                            >
+                              <Send className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Press Enter to send your message or use voice recording
+                          </p>
+                        </>
+                      )}
+
+                      {/* Voice Mode Controls */}
+                      {currentMode === "voice" && (
+                        <div className="space-y-3">
+                          <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`w-2 h-2 rounded-full ${isVoiceChatActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                              <span className="text-sm font-medium text-purple-900">Voice Chat Active</span>
+                            </div>
+                            {voiceStatus && (
+                              <p className="text-sm text-purple-700">{voiceStatus}</p>
+                            )}
+                            <p className="text-xs text-purple-600 mt-2">
+                              Simply speak to interact with the avatar. No buttons needed!
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status Information */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-gray-700">Status</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                          <span className="text-sm text-gray-600">{isConnected ? 'Connected' : 'Disconnected'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isSpeaking ? <MicOff className="w-4 h-4 text-gray-600" /> : <Mic className="w-4 h-4 text-gray-600" />}
+                          <span className="text-sm text-gray-600">{isSpeaking ? 'Speaking' : 'Ready'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* API Key Setup - Only show for text mode */}
+                    {currentMode === "text" && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-medium text-gray-700">OpenAI API Key Setup</h4>
+                        <div className="flex gap-2">
+                          <Input
+                            type="password"
+                            placeholder="Enter your OpenAI API key (sk-proj-...)..."
+                            defaultValue=""
+                            onChange={(e) => {
+                              const value = e.target.value.trim();
+                              if (value) {
+                                localStorage.setItem('openai_api_key', value);
+                              } else {
+                                localStorage.removeItem('openai_api_key');
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const input = document.querySelector('input[type="password"]') as HTMLInputElement;
+                              if (input) {
+                                input.value = '';
+                                localStorage.removeItem('openai_api_key');
+                                toast({
+                                  title: "API Key Cleared",
+                                  description: "OpenAI API key has been removed.",
+                                });
+                              }
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Required for speech-to-text functionality in Text Mode. Your key is stored locally.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Instructions */}
+                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <h5 className="font-medium mb-2 text-gray-900">How to get started:</h5>
+                      <ol className="text-sm text-gray-600 space-y-1">
+                        <li>1. Click "Start Session" to connect to your {role.label.toLowerCase()}</li>
+                        <li>2. Choose between Text Mode or Voice Mode</li>
+                        <li>3. <strong>Voice Mode:</strong> Simply speak - no setup required!</li>
+                        <li>4. <strong>Text Mode:</strong> Add OpenAI key for voice recording or type messages</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
     </div>
   );
