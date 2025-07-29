@@ -48,7 +48,7 @@ const roleConfigs: RoleConfig[] = [
     label: "Receptionist",
     description: "Speak to an AI receptionist that greets visitors and manages appointments",
     icon: <UserCheck className="w-4 h-4" />,
-    avatarName: "Katya_Chair_Sitting_public",
+    avatarName: "Alessandra_Chair_Sitting_public",
     prompt: "You are a professional receptionist. Greet visitors warmly and help them with their needs."
   },
   {
@@ -56,7 +56,7 @@ const roleConfigs: RoleConfig[] = [
     label: "Concierge", 
     description: "Talk to a luxury hotel concierge AI for personalized guest services",
     icon: <Hotel className="w-4 h-4" />,
-    avatarName: "Katya_Chair_Sitting_public",
+    avatarName: "Anastasia_Chair_Sitting_public",
     prompt: "You are a luxury hotel concierge. Provide personalized recommendations and exceptional service."
   },
   {
@@ -64,7 +64,7 @@ const roleConfigs: RoleConfig[] = [
     label: "Appointment Setter",
     description: "AI assistant specialized in scheduling and managing appointments efficiently",
     icon: <Calendar className="w-4 h-4" />,
-    avatarName: "Katya_Chair_Sitting_public", 
+    avatarName: "Amina_Chair_Sitting_public", 
     prompt: "You are an appointment setting specialist. Help users schedule appointments efficiently."
   },
   {
@@ -72,7 +72,7 @@ const roleConfigs: RoleConfig[] = [
     label: "AI IVR",
     description: "Interactive voice response system for call routing and information",
     icon: <Phone className="w-4 h-4" />,
-    avatarName: "Katya_Chair_Sitting_public",
+    avatarName: "Elenora_IT_Sitting_public",
     prompt: "You are an AI IVR system. Help callers navigate options and connect them to the right department."
   }
 ];
