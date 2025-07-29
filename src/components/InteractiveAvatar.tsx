@@ -114,7 +114,7 @@ const InteractiveAvatar = () => {
         description: `Switched to ${currentRole.label}. Restart session to apply changes.`,
       });
     }
-  }, [activeRole]);
+  }, [activeRole, isConnected, avatar, currentRole.label, toast]);
 
   const initializeAudioRecorder = () => {
     console.log('Initializing audio recorder...');
