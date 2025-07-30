@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Mic, MicOff, Video, VideoOff, Send, Play, Square, Users, UserCheck, Hotel, Calendar, Phone } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, Send, Play, Square, Users, UserCheck, Hotel, Calendar, Phone, X, Bot } from "lucide-react";
 import { AudioRecorder } from "@/utils/audio-recorder";
 
 // Import HeyGen Streaming Avatar SDK
@@ -32,6 +33,14 @@ interface RoleConfig {
   avatarName: string;
   heygenShareUrl?: string;
   prompt?: string;
+}
+
+// Chat message interface
+interface ChatMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
 }
 
 const roleConfigs: RoleConfig[] = [
@@ -94,6 +103,14 @@ const InteractiveAvatar = () => {
   const [isVoiceChatActive, setIsVoiceChatActive] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState("");
   
+  // Chat history state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isChatVisible, setIsChatVisible] = useState(true);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
@@ -132,6 +149,21 @@ const InteractiveAvatar = () => {
     console.log('Audio recorder initialized');
   };
 
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const addChatMessage = (content: string, isUser: boolean) => {
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content,
+      isUser,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, newMessage]);
+  };
+
   const speakTranscribedText = async (text: string) => {
     console.log('speakTranscribedText called with:', text);
     console.log('Avatar instance:', avatar);
@@ -167,16 +199,28 @@ const InteractiveAvatar = () => {
       return;
     }
 
+    // Add user message to chat
+    addChatMessage(text.trim(), true);
+    
     setIsSpeaking(true);
+    setIsAiTyping(true);
     try {
       console.log('Calling avatar.speak with text:', text);
       await avatar.speak({ text: text.trim() });
+      
+      // Add AI response to chat (simulated for now)
+      setTimeout(() => {
+        addChatMessage("I understand what you're saying. Let me help you with that.", false);
+        setIsAiTyping(false);
+      }, 1000);
+      
       toast({
         title: "Voice Message Sent",
         description: `Avatar is speaking: "${text}"`,
       });
     } catch (error) {
       console.error("Failed to speak transcribed text:", error);
+      setIsAiTyping(false);
       toast({
         title: "Speech Error",
         description: "Failed to send voice message to avatar.",
@@ -349,18 +393,32 @@ const InteractiveAvatar = () => {
   const handleSpeak = async () => {
     if (!avatar || !userInput.trim()) return;
 
+    const messageText = userInput.trim();
+    
+    // Add user message to chat
+    addChatMessage(messageText, true);
+    
     setIsSpeaking(true);
+    setIsAiTyping(true);
     try {
       await avatar.speak({
-        text: userInput,
+        text: messageText,
       });
       setUserInput("");
+      
+      // Add AI response to chat (simulated for now)
+      setTimeout(() => {
+        addChatMessage("Thank you for your message. I'm here to help you with any questions you may have.", false);
+        setIsAiTyping(false);
+      }, 1500);
+      
       toast({
         title: "Message Sent",
         description: "Avatar is speaking your message.",
       });
     } catch (error) {
       console.error("Failed to speak:", error);
+      setIsAiTyping(false);
       toast({
         title: "Speech Error",
         description: "Failed to send message to avatar.",
@@ -371,10 +429,16 @@ const InteractiveAvatar = () => {
     }
   };
 
+  const handleChatSend = () => {
+    if (currentMode === "text") {
+      handleSpeak();
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSpeak();
+      handleChatSend();
     }
   };
 
@@ -476,10 +540,10 @@ const InteractiveAvatar = () => {
                   </p>
                 </div>
 
-                {/* Avatar and Controls Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Video Section */}
-                  <div className="space-y-4">
+                {/* Two-Panel Layout: Avatar Video + Chat History */}
+                <div className="flex flex-col lg:flex-row gap-6 min-h-[500px]">
+                  {/* Left Panel: Avatar Video (60-70% width) */}
+                  <div className="lg:w-[65%] space-y-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Video className="w-5 h-5 text-gray-700" />
                       <span className="font-medium text-gray-900">Avatar Display</span>
@@ -514,13 +578,9 @@ const InteractiveAvatar = () => {
                         </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Controls Section */}
-                  <div className="space-y-6">
                     {/* Session Controls */}
                     <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-gray-700">Session Management</h4>
                       <div className="flex gap-3">
                         <Button
                           variant="avatar"
@@ -541,11 +601,6 @@ const InteractiveAvatar = () => {
                           End Session
                         </Button>
                       </div>
-                    </div>
-
-                    {/* Communication Controls */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-gray-700">Communication</h4>
                       
                       {/* Mode Toggle */}
                       <div className="flex gap-2" role="group">
@@ -566,71 +621,165 @@ const InteractiveAvatar = () => {
                           Voice Mode
                         </Button>
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Text Mode Controls */}
-                      {currentMode === "text" && (
-                        <>
-                          {/* Voice Recording (OpenAI STT) */}
-                          <div className="flex gap-2">
-                            <Button
-                              variant={isRecording ? "destructive" : "avatar"}
-                              onClick={toggleRecording}
-                              disabled={!isConnected}
-                              className="flex-1"
-                            >
-                              {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                              {isRecording ? "Stop Recording" : "Start Recording"}
-                            </Button>
+                  {/* Right Panel: Chat History (30-40% width) */}
+                  {isChatVisible && (
+                    <div className="lg:w-[35%] flex flex-col">
+                      <div className="rounded-lg border border-gray-300 bg-white shadow-sm overflow-hidden flex flex-col h-[500px]">
+                        {/* Chat Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+                          <div className="flex items-center gap-2">
+                            <Bot className="w-5 h-5 text-purple-600" />
+                            <span className="font-medium text-gray-900">Chatting with {role.label}</span>
                           </div>
-                          
-                          {recordingStatus && (
-                            <div className="p-2 bg-gray-50 rounded border border-gray-200">
-                              <p className="text-xs text-gray-600">{recordingStatus}</p>
-                            </div>
-                          )}
-                          
-                          {/* Text Input */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsChatVisible(false)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {/* Chat Messages */}
+                        <ScrollArea className="flex-1 p-4">
+                          <div className="space-y-4">
+                            {chatMessages.length === 0 && (
+                              <div className="text-center text-gray-500 text-sm py-8">
+                                Start chatting with your {role.label.toLowerCase()}!
+                              </div>
+                            )}
+                            
+                            {chatMessages.map((message) => (
+                              <div
+                                key={message.id}
+                                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div
+                                  className={`max-w-[80%] px-4 py-2 rounded-lg text-sm ${
+                                    message.isUser
+                                      ? 'bg-purple-600 text-white ml-auto'
+                                      : 'bg-gray-100 text-gray-900'
+                                  }`}
+                                >
+                                  <p>{message.content}</p>
+                                  <p className={`text-xs mt-1 opacity-70 ${
+                                    message.isUser ? 'text-purple-100' : 'text-gray-500'
+                                  }`}>
+                                    {message.timestamp.toLocaleTimeString([], { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {/* Typing Indicator */}
+                            {isAiTyping && (
+                              <div className="flex justify-start">
+                                <div className="max-w-[80%] px-4 py-2 rounded-lg text-sm bg-gray-100 text-gray-900">
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div ref={chatEndRef} />
+                          </div>
+                        </ScrollArea>
+
+                        {/* Chat Input Area */}
+                        <div className="p-4 border-t border-gray-200 bg-gray-50">
                           <div className="flex gap-2">
                             <Input
-                              placeholder="Type something to say to the avatar..."
+                              ref={chatInputRef}
+                              placeholder="Type your message..."
                               value={userInput}
                               onChange={(e) => setUserInput(e.target.value)}
                               onKeyPress={handleKeyPress}
-                              disabled={!isConnected || isSpeaking}
+                              disabled={!isConnected || isSpeaking || isAiTyping}
                               className="flex-1"
                             />
                             <Button
                               variant="cyber"
-                              onClick={handleSpeak}
-                              disabled={!isConnected || !userInput.trim() || isSpeaking}
+                              onClick={handleChatSend}
+                              disabled={!isConnected || !userInput.trim() || isSpeaking || isAiTyping}
+                              className="px-3"
                             >
                               <Send className="w-4 h-4" />
                             </Button>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            Press Enter to send your message or use voice recording
-                          </p>
-                        </>
-                      )}
-
-                      {/* Voice Mode Controls */}
-                      {currentMode === "voice" && (
-                        <div className="space-y-3">
-                          <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className={`w-2 h-2 rounded-full ${isVoiceChatActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-                              <span className="text-sm font-medium text-purple-900">Voice Chat Active</span>
-                            </div>
-                            {voiceStatus && (
-                              <p className="text-sm text-purple-700">{voiceStatus}</p>
-                            )}
-                            <p className="text-xs text-purple-600 mt-2">
-                              Simply speak to interact with the avatar. No buttons needed!
-                            </p>
-                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Show Chat Button when hidden */}
+                  {!isChatVisible && (
+                    <div className="lg:w-[35%] flex items-start justify-center pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsChatVisible(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Bot className="w-4 h-4" />
+                        Show Chat
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Controls - Only show when not in text mode or chat is hidden */}
+                {(currentMode !== "text" || !isChatVisible) && (
+                  <div className="mt-6 space-y-6">
+                    {/* Voice Recording (OpenAI STT) - Show when in text mode and chat is hidden */}
+                    {currentMode === "text" && !isChatVisible && (
+                      <>
+                        <div className="flex gap-2">
+                          <Button
+                            variant={isRecording ? "destructive" : "avatar"}
+                            onClick={toggleRecording}
+                            disabled={!isConnected}
+                            className="flex-1"
+                          >
+                            {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                            {isRecording ? "Stop Recording" : "Start Recording"}
+                          </Button>
+                        </div>
+                        
+                        {recordingStatus && (
+                          <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <p className="text-xs text-gray-600">{recordingStatus}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Voice Mode Controls */}
+                    {currentMode === "voice" && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-medium text-gray-700">Voice Chat</h4>
+                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-2 h-2 rounded-full ${isVoiceChatActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                            <span className="text-sm font-medium text-purple-900">Voice Chat Active</span>
+                          </div>
+                          {voiceStatus && (
+                            <p className="text-sm text-purple-700">{voiceStatus}</p>
+                          )}
+                          <p className="text-xs text-purple-600 mt-2">
+                            Simply speak to interact with the avatar. No buttons needed!
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Status Information */}
                     <div className="space-y-3">
@@ -697,11 +846,11 @@ const InteractiveAvatar = () => {
                         <li>1. Click "Start Session" to connect to your {role.label.toLowerCase()}</li>
                         <li>2. Choose between Text Mode or Voice Mode</li>
                         <li>3. <strong>Voice Mode:</strong> Simply speak - no setup required!</li>
-                        <li>4. <strong>Text Mode:</strong> Add OpenAI key for voice recording or type messages</li>
+                        <li>4. <strong>Text Mode:</strong> Use the chat panel or voice recording</li>
                       </ol>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </TabsContent>
           ))}
