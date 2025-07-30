@@ -199,35 +199,81 @@ const InteractiveAvatar = () => {
       return;
     }
 
-    // Add user message to chat
+    // Add user message to chat immediately
     addChatMessage(text.trim(), true);
     
     setIsSpeaking(true);
     setIsAiTyping(true);
+    
     try {
-      console.log('Calling avatar.speak with text:', text);
-      await avatar.speak({ text: text.trim() });
+      // Get OpenAI response first
+      const openaiResponse = await getOpenAIResponse(text.trim(), currentRole.prompt || '');
       
-      // Add AI response to chat (simulated for now)
-      setTimeout(() => {
-        addChatMessage("I understand what you're saying. Let me help you with that.", false);
-        setIsAiTyping(false);
-      }, 1000);
+      console.log('Calling avatar.speak with OpenAI response:', openaiResponse);
+      await avatar.speak({ text: openaiResponse });
+      
+      // Add AI response to chat
+      addChatMessage(openaiResponse, false);
+      setIsAiTyping(false);
       
       toast({
         title: "Voice Message Sent",
-        description: `Avatar is speaking: "${text}"`,
+        description: `Avatar is responding...`,
       });
     } catch (error) {
       console.error("Failed to speak transcribed text:", error);
       setIsAiTyping(false);
+      // Add fallback response to chat
+      addChatMessage("I'm sorry, I couldn't process your request right now. Please try again.", false);
       toast({
         title: "Speech Error",
-        description: "Failed to send voice message to avatar.",
+        description: "Failed to process voice message.",
         variant: "destructive",
       });
     } finally {
       setIsSpeaking(false);
+    }
+  };
+
+  const getOpenAIResponse = async (userMessage: string, systemPrompt: string): Promise<string> => {
+    const openaiKey = localStorage.getItem('openai_api_key');
+    if (!openaiKey) {
+      throw new Error('OpenAI API key not found');
+    }
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt + ' Keep responses conversational and under 100 words.'
+            },
+            {
+              role: 'user',
+              content: userMessage
+            }
+          ],
+          max_tokens: 150,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || "I understand. How can I help you further?";
+    } catch (error) {
+      console.error('OpenAI API Error:', error);
+      throw error;
     }
   };
 
@@ -400,25 +446,29 @@ const InteractiveAvatar = () => {
     
     setIsSpeaking(true);
     setIsAiTyping(true);
+    
     try {
+      // Get OpenAI response first
+      const openaiResponse = await getOpenAIResponse(messageText, currentRole.prompt || '');
+      
       await avatar.speak({
-        text: messageText,
+        text: openaiResponse,
       });
       setUserInput("");
       
-      // Add AI response to chat (simulated for now)
-      setTimeout(() => {
-        addChatMessage("Thank you for your message. I'm here to help you with any questions you may have.", false);
-        setIsAiTyping(false);
-      }, 1500);
+      // Add AI response to chat
+      addChatMessage(openaiResponse, false);
+      setIsAiTyping(false);
       
       toast({
         title: "Message Sent",
-        description: "Avatar is speaking your message.",
+        description: "Avatar is responding...",
       });
     } catch (error) {
       console.error("Failed to speak:", error);
       setIsAiTyping(false);
+      // Add fallback response to chat
+      addChatMessage("I'm sorry, I couldn't process your request right now. Please try again.", false);
       toast({
         title: "Speech Error",
         description: "Failed to send message to avatar.",
@@ -537,6 +587,60 @@ const InteractiveAvatar = () => {
                   </h3>
                   <p className="text-gray-600">
                     {role.description}
+                  </p>
+                </div>
+
+                {/* OpenAI API Key Setup - Always Visible */}
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                    <Bot className="w-4 h-4" />
+                    OpenAI API Key Configuration
+                  </h4>
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder="Enter your OpenAI API key (sk-proj-...)..."
+                      defaultValue={localStorage.getItem('openai_api_key') || ''}
+                      onChange={(e) => {
+                        const value = e.target.value.trim();
+                        if (value) {
+                          localStorage.setItem('openai_api_key', value);
+                          toast({
+                            title: "API Key Updated",
+                            description: "OpenAI API key has been saved.",
+                          });
+                        } else {
+                          localStorage.removeItem('openai_api_key');
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const input = document.querySelector('input[type="password"]') as HTMLInputElement;
+                        if (input) {
+                          input.value = '';
+                          localStorage.removeItem('openai_api_key');
+                          toast({
+                            title: "API Key Cleared",
+                            description: "OpenAI API key has been removed.",
+                          });
+                        }
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-2">
+                    <strong>Required for AI responses.</strong> Your key is stored locally in your browser.
+                    {!localStorage.getItem('openai_api_key') && (
+                      <span className="text-red-600 font-medium"> ⚠️ API key not set - AI responses disabled</span>
+                    )}
+                    {localStorage.getItem('openai_api_key') && (
+                      <span className="text-green-600 font-medium"> ✅ API key configured</span>
+                    )}
                   </p>
                 </div>
 
@@ -796,48 +900,6 @@ const InteractiveAvatar = () => {
                       </div>
                     </div>
 
-                    {/* API Key Setup - Only show for text mode */}
-                    {currentMode === "text" && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-gray-700">OpenAI API Key Setup</h4>
-                        <div className="flex gap-2">
-                          <Input
-                            type="password"
-                            placeholder="Enter your OpenAI API key (sk-proj-...)..."
-                            defaultValue=""
-                            onChange={(e) => {
-                              const value = e.target.value.trim();
-                              if (value) {
-                                localStorage.setItem('openai_api_key', value);
-                              } else {
-                                localStorage.removeItem('openai_api_key');
-                              }
-                            }}
-                            className="flex-1"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const input = document.querySelector('input[type="password"]') as HTMLInputElement;
-                              if (input) {
-                                input.value = '';
-                                localStorage.removeItem('openai_api_key');
-                                toast({
-                                  title: "API Key Cleared",
-                                  description: "OpenAI API key has been removed.",
-                                });
-                              }
-                            }}
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Required for speech-to-text functionality in Text Mode. Your key is stored locally.
-                        </p>
-                      </div>
-                    )}
 
                     {/* Instructions */}
                     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
